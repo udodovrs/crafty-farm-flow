@@ -26,6 +26,7 @@ const StitchPage = () => {
   const [photoAfter, setPhotoAfter] = useState<File | null>(null);
   const [previewBefore, setPreviewBefore] = useState<string | null>(null);
   const [previewAfter, setPreviewAfter] = useState<string | null>(null);
+  const [stitchCount, setStitchCount] = useState("");
   const beforeRef = useRef<HTMLInputElement>(null);
   const afterRef = useRef<HTMLInputElement>(null);
 
@@ -93,6 +94,7 @@ const StitchPage = () => {
         photo_before_url: beforeUrl,
         photo_after_url: afterUrl,
         status: "pending",
+        stitch_count: parseInt(stitchCount) || 0,
       });
       if (error) throw error;
     },
@@ -102,6 +104,7 @@ const StitchPage = () => {
       setPhotoAfter(null);
       setPreviewBefore(null);
       setPreviewAfter(null);
+      setStitchCount("");
       setCodeWord(generateCodeWord());
       toast.success("Работа отправлена на проверку! ✨");
     },
@@ -150,6 +153,24 @@ const StitchPage = () => {
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Stitch Count */}
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-display text-base">Количество крестиков</CardTitle>
+          <CardDescription>Сколько крестиков вы вышили? (1 крестик = 1 монета)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <input
+            type="number"
+            min="1"
+            placeholder="Например: 150"
+            value={stitchCount}
+            onChange={(e) => setStitchCount(e.target.value)}
+            className="w-full rounded-lg border border-input bg-background px-4 py-2 text-sm"
+          />
         </CardContent>
       </Card>
 

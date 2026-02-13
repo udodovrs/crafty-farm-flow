@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Sprout, Scissors, CheckSquare, User } from "lucide-react";
+import { Sprout, Scissors, CheckSquare, User, ShoppingBag, Package, Store } from "lucide-react";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -8,6 +8,9 @@ interface AppLayoutProps {
 
 const navItems = [
   { to: "/", icon: Sprout, label: "Ферма" },
+  { to: "/shop", icon: ShoppingBag, label: "Магазин" },
+  { to: "/pantry", icon: Package, label: "Кладовая" },
+  { to: "/market", icon: Store, label: "Рынок" },
   { to: "/stitch", icon: Scissors, label: "Вышивка" },
   { to: "/review", icon: CheckSquare, label: "Проверка" },
   { to: "/profile", icon: User, label: "Профиль" },
@@ -21,7 +24,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <main className="flex-1 pb-20">{children}</main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
+        <div className="mx-auto flex max-w-lg items-center gap-1 overflow-x-auto px-2 py-2 no-scrollbar">
           {navItems.map(({ to, icon: Icon, label }) => {
             const isActive = location.pathname === to;
             return (
