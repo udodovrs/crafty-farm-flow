@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Sprout, Scissors, CheckSquare, User, ShoppingBag, Package, Store } from "lucide-react";
+import { Sprout, Scissors, CheckSquare, User, Store, Package } from "lucide-react";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -8,9 +8,8 @@ interface AppLayoutProps {
 
 const navItems = [
   { to: "/", icon: Sprout, label: "Ферма" },
-  { to: "/shop", icon: ShoppingBag, label: "Магазин" },
-  { to: "/pantry", icon: Package, label: "Кладовая" },
   { to: "/market", icon: Store, label: "Рынок" },
+  { to: "/pantry", icon: Package, label: "Кладовая" },
   { to: "/stitch", icon: Scissors, label: "Вышивка" },
   { to: "/review", icon: CheckSquare, label: "Проверка" },
   { to: "/profile", icon: User, label: "Профиль" },

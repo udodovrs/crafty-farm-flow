@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       animal_pens: {
         Row: {
+          animal_count: number
           animal_type: string | null
           created_at: string
           id: string
@@ -24,6 +25,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          animal_count?: number
           animal_type?: string | null
           created_at?: string
           id?: string
@@ -32,6 +34,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          animal_count?: number
           animal_type?: string | null
           created_at?: string
           id?: string
@@ -45,6 +48,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          last_harvested_at: string | null
           plant_type: string | null
           planted_at: string | null
           position: number
@@ -53,6 +57,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          last_harvested_at?: string | null
           plant_type?: string | null
           planted_at?: string | null
           position: number
@@ -61,6 +66,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          last_harvested_at?: string | null
           plant_type?: string | null
           planted_at?: string | null
           position?: number
@@ -98,6 +104,36 @@ export type Database = {
           quantity?: number
           seller_id?: string
           status?: string
+        }
+        Relationships: []
+      }
+      orchard_trees: {
+        Row: {
+          created_at: string
+          id: string
+          last_harvested_at: string | null
+          planted_at: string | null
+          position: number
+          tree_type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_harvested_at?: string | null
+          planted_at?: string | null
+          position: number
+          tree_type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_harvested_at?: string | null
+          planted_at?: string | null
+          position?: number
+          tree_type?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -244,10 +280,25 @@ export type Database = {
     }
     Functions: {
       buy_market_listing: { Args: { p_listing_id: string }; Returns: undefined }
+      clear_plot: { Args: { p_plot_id: string }; Returns: undefined }
+      clear_tree: { Args: { p_tree_id: string }; Returns: undefined }
       collect_animal_product: { Args: { p_pen_id: string }; Returns: undefined }
+      feed_animal: {
+        Args: { p_pen_id: string; p_quantity: number }
+        Returns: undefined
+      }
       harvest_plot: { Args: { p_plot_id: string }; Returns: undefined }
+      harvest_tree: { Args: { p_tree_id: string }; Returns: undefined }
       process_review: {
         Args: { p_decision: boolean; p_task_id: string }
+        Returns: undefined
+      }
+      sell_to_system: {
+        Args: {
+          p_item_type: string
+          p_price_per_unit: number
+          p_quantity: number
+        }
         Returns: undefined
       }
     }
