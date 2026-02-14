@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import AuthPage from "@/pages/AuthPage";
 import FarmPage from "@/pages/FarmPage";
-import ShopPage from "@/pages/ShopPage";
 import PantryPage from "@/pages/PantryPage";
 import MarketPage from "@/pages/MarketPage";
 import StitchPage from "@/pages/StitchPage";
@@ -55,7 +54,6 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/" element={<ProtectedRoute><FarmPage /></ProtectedRoute>} />
-            <Route path="/shop" element={<ProtectedRoute><ShopPage /></ProtectedRoute>} />
             <Route path="/pantry" element={<ProtectedRoute><PantryPage /></ProtectedRoute>} />
             <Route path="/market" element={<ProtectedRoute><MarketPage /></ProtectedRoute>} />
             <Route path="/stitch" element={<ProtectedRoute><StitchPage /></ProtectedRoute>} />
