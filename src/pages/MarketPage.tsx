@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,7 +48,6 @@ const MarketPage = () => {
     queryClient.invalidateQueries({ queryKey: ["animal_pens"] });
   };
 
-  // Sell to system
   const sellMutation = useMutation({
     mutationFn: async ({ itemType, quantity }: { itemType: string; quantity: number }) => {
       const price = SELL_PRICES[itemType];
@@ -65,10 +63,9 @@ const MarketPage = () => {
     onError: (e) => toast.error(e.message),
   });
 
-  // Buy animal
   const buyAnimalMutation = useMutation({
     mutationFn: async ({ penId, animalType, cost, currentCount }: { penId: string; animalType: string; cost: number; currentCount: number }) => {
-      if (!profile || profile.balance < cost) throw new Error("Недостаточно монет");
+      if (!profile || profile.balance < cost) throw new Error("Недостаточно монеток");
       const { error: e1 } = await supabase
         .from("animal_pens")
         .update({ animal_type: animalType, animal_count: currentCount + 1 })
@@ -91,7 +88,7 @@ const MarketPage = () => {
             <Store className="h-6 w-6 text-accent" />
             Рынок
           </h1>
-          <p className="text-sm text-muted-foreground">Покупайте и продавайте</p>
+          <p className="text-sm text-muted-foreground">Покупайте и продавайте за монетки</p>
         </div>
         {profile && <CurrencyDisplay amount={profile.balance} size="lg" />}
       </div>
@@ -100,7 +97,7 @@ const MarketPage = () => {
       {sellableItems.length > 0 && (
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-base">💰 Продать системе</CardTitle>
+            <CardTitle className="font-display text-base">💰 Продать</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {sellableItems.map((item) => {
@@ -112,7 +109,7 @@ const MarketPage = () => {
                     <span className="text-2xl">{config?.emoji || "📦"}</span>
                     <div>
                       <p className="text-sm font-medium">{config?.label || item.item_type}</p>
-                      <p className="text-xs text-muted-foreground">В наличии: {item.quantity} шт. • Цена: {price} 🪙/шт.</p>
+                      <p className="text-xs text-muted-foreground">В наличии: {item.quantity} • {price} 🪙/шт.</p>
                     </div>
                   </div>
                   <Button
@@ -136,7 +133,6 @@ const MarketPage = () => {
         </CardHeader>
         <CardContent className="space-y-2">
           {ANIMALS.map((animal) => {
-            // Find a pen that either has this type with room, or is empty
             const compatiblePen = pens?.find(
               (p) => (p.animal_type === animal.type && p.animal_count < animal.maxPerPen) ||
                      (!p.animal_type && p.animal_count === 0)
@@ -171,12 +167,8 @@ const MarketPage = () => {
               </div>
             );
           })}
-          {pens?.every((p) => {
-            if (!p.animal_type) return false;
-            const a = ANIMALS.find((a) => a.type === p.animal_type);
-            return a && p.animal_count >= a.maxPerPen;
-          }) && (
-            <p className="text-center text-xs text-muted-foreground">Все загоны заполнены! Добавьте загон на ферме.</p>
+          {pens?.length === 0 && (
+            <p className="text-center text-xs text-muted-foreground">Нет загонов. Добавьте загон на ферме.</p>
           )}
         </CardContent>
       </Card>

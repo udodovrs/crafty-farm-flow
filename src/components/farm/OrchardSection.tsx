@@ -21,7 +21,7 @@ const OrchardSection = ({ trees, profile, onInvalidate, onAddTree, addTreePendin
 
   const plantTreeMutation = useMutation({
     mutationFn: async ({ treeId, treeType, cost }: { treeId: string; treeType: string; cost: number }) => {
-      if (!profile || profile.balance < cost) throw new Error("Недостаточно монет");
+      if (!profile || profile.balance < cost) throw new Error("Недостаточно монеток");
       const { error: e1 } = await supabase
         .from("orchard_trees")
         .update({ tree_type: treeType, planted_at: new Date().toISOString() })
@@ -31,15 +31,6 @@ const OrchardSection = ({ trees, profile, onInvalidate, onAddTree, addTreePendin
       if (e2) throw e2;
     },
     onSuccess: () => { onInvalidate(); toast.success("Дерево посажено! 🌳"); },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const harvestTreeMutation = useMutation({
-    mutationFn: async (treeId: string) => {
-      const { error } = await supabase.rpc("harvest_tree", { p_tree_id: treeId });
-      if (error) throw error;
-    },
-    onSuccess: () => { onInvalidate(); toast.success("Фрукты собраны! 🍎"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -64,11 +55,11 @@ const OrchardSection = ({ trees, profile, onInvalidate, onAddTree, addTreePendin
             size="sm"
             variant="outline"
             className="h-7 text-xs"
-            disabled={!profile || profile.balance < TREE_COST || addTreePending}
+            disabled={!profile || (profile.stitchcoins || 0) < TREE_COST || addTreePending}
             onClick={onAddTree}
           >
             <Plus className="mr-1 h-3 w-3" />
-            Дерево <CurrencyDisplay amount={TREE_COST} size="sm" />
+            Дерево <CurrencyDisplay amount={TREE_COST} size="sm" type="stitchcoins" />
           </Button>
         </div>
       </CardHeader>
@@ -91,15 +82,7 @@ const OrchardSection = ({ trees, profile, onInvalidate, onAddTree, addTreePendin
                     <span className="text-2xl">{treeConfig.emoji}</span>
                     <span className="text-[10px] text-muted-foreground">{treeConfig.label}</span>
                     {timer?.ready ? (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="mt-1 h-6 text-[10px]"
-                        onClick={() => harvestTreeMutation.mutate(tree.id)}
-                        disabled={harvestTreeMutation.isPending}
-                      >
-                        Собрать
-                      </Button>
+                      <span className="mt-1 text-[10px] text-primary font-medium">✓ Готово</span>
                     ) : timer ? (
                       <span className="mt-1 flex items-center gap-0.5 text-[10px] text-muted-foreground">
                         <Timer className="h-3 w-3" /> {timer.minutes}м

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,11 +45,11 @@ const BarnSection = ({ pens, pantry, profile, onInvalidate, onAddPen, addPenPend
             size="sm"
             variant="outline"
             className="h-7 text-xs"
-            disabled={!profile || profile.balance < PEN_COST || addPenPending}
+            disabled={!profile || (profile.stitchcoins || 0) < PEN_COST || addPenPending}
             onClick={onAddPen}
           >
             <Plus className="mr-1 h-3 w-3" />
-            Загон <CurrencyDisplay amount={PEN_COST} size="sm" />
+            Загон <CurrencyDisplay amount={PEN_COST} size="sm" type="stitchcoins" />
           </Button>
         </div>
       </CardHeader>

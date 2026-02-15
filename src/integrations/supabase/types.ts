@@ -172,6 +172,7 @@ export type Database = {
           id: string
           reputation: number
           reviews_count: number
+          stitchcoins: number
           updated_at: string
           user_id: string
         }
@@ -182,6 +183,7 @@ export type Database = {
           id?: string
           reputation?: number
           reviews_count?: number
+          stitchcoins?: number
           updated_at?: string
           user_id: string
         }
@@ -192,6 +194,7 @@ export type Database = {
           id?: string
           reputation?: number
           reviews_count?: number
+          stitchcoins?: number
           updated_at?: string
           user_id?: string
         }
@@ -279,6 +282,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_harvest_all: { Args: never; Returns: undefined }
       buy_market_listing: { Args: { p_listing_id: string }; Returns: undefined }
       clear_plot: { Args: { p_plot_id: string }; Returns: undefined }
       clear_tree: { Args: { p_tree_id: string }; Returns: undefined }

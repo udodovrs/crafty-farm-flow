@@ -12,11 +12,7 @@ const ProfilePage = () => {
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user!.id)
-        .single();
+      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", user!.id).single();
       if (error) throw error;
       return data;
     },
@@ -26,10 +22,7 @@ const ProfilePage = () => {
   const { data: taskStats } = useQuery({
     queryKey: ["task_stats", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stitch_tasks")
-        .select("status")
-        .eq("user_id", user!.id);
+      const { data, error } = await supabase.from("stitch_tasks").select("status").eq("user_id", user!.id);
       if (error) throw error;
       return {
         total: data.length,
@@ -60,16 +53,21 @@ const ProfilePage = () => {
         <p className="text-sm text-muted-foreground">{user?.email}</p>
       </div>
 
-      {/* Balance Card */}
-      <Card className="mb-4 bg-primary/5 border-primary/20">
-        <CardContent className="flex items-center justify-between py-5">
-          <div>
-            <p className="text-sm text-muted-foreground">Баланс</p>
+      {/* Currencies */}
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="flex flex-col items-center py-4">
+            <p className="text-xs text-muted-foreground mb-1">Монетки</p>
             <CurrencyDisplay amount={profile?.balance || 0} size="lg" />
-          </div>
-          <div className="text-4xl">💰</div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        <Card className="bg-accent/5 border-accent/20">
+          <CardContent className="flex flex-col items-center py-4">
+            <p className="text-xs text-muted-foreground mb-1">Стичкоинс</p>
+            <CurrencyDisplay amount={profile?.stitchcoins || 0} size="lg" type="stitchcoins" />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-3 gap-3">
@@ -95,29 +93,6 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Task Summary */}
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="font-display text-base">Статистика работ</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Всего отправлено</span>
-              <span className="font-medium">{taskStats?.total || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Принято</span>
-              <span className="font-medium text-primary">{taskStats?.approved || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">На проверке</span>
-              <span className="font-medium text-craft-gold">{taskStats?.pending || 0}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <Button variant="outline" className="w-full" onClick={signOut}>
         <LogOut className="mr-2 h-4 w-4" />

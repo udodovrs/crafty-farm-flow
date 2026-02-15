@@ -2,12 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import CurrencyDisplay from "@/components/CurrencyDisplay";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Sprout, Droplets, Timer, Plus, Trash2, TreePine } from "lucide-react";
 import {
-  SEEDS, TREES, ANIMALS, GROW_TIME_MS, getTimeRemaining,
   PLOT_COST, PEN_COST, TREE_COST,
 } from "@/lib/gameConfig";
 import { useState, useEffect } from "react";
@@ -20,10 +16,29 @@ const FarmPage = () => {
   const queryClient = useQueryClient();
   const [, setTick] = useState(0);
 
+  // Auto-harvest on load and every 30s
+  const autoHarvestMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("auto_harvest_all");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["farm_plots"] });
+      queryClient.invalidateQueries({ queryKey: ["orchard_trees"] });
+      queryClient.invalidateQueries({ queryKey: ["pantry"] });
+    },
+  });
+
   useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 30000);
+    if (user) {
+      autoHarvestMutation.mutate();
+    }
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+      if (user) autoHarvestMutation.mutate();
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -83,42 +98,42 @@ const FarmPage = () => {
     queryClient.invalidateQueries({ queryKey: ["profile"] });
   };
 
-  // Add plot
+  // Add plot (costs stitchcoins)
   const addPlotMutation = useMutation({
     mutationFn: async () => {
-      if (!profile || profile.balance < PLOT_COST) throw new Error("Недостаточно монет");
+      if (!profile || (profile.stitchcoins || 0) < PLOT_COST) throw new Error("Недостаточно стичкоинс");
       const nextPos = plots?.length || 0;
       const { error: e1 } = await supabase.from("farm_plots").insert({ user_id: user!.id, position: nextPos });
       if (e1) throw e1;
-      const { error: e2 } = await supabase.from("profiles").update({ balance: profile.balance - PLOT_COST }).eq("user_id", user!.id);
+      const { error: e2 } = await supabase.from("profiles").update({ stitchcoins: (profile.stitchcoins || 0) - PLOT_COST }).eq("user_id", user!.id);
       if (e2) throw e2;
     },
     onSuccess: () => { invalidateAll(); toast.success("Новая грядка! 🌱"); },
     onError: (e) => toast.error(e.message),
   });
 
-  // Add tree
+  // Add tree (costs stitchcoins)
   const addTreeMutation = useMutation({
     mutationFn: async () => {
-      if (!profile || profile.balance < TREE_COST) throw new Error("Недостаточно монет");
+      if (!profile || (profile.stitchcoins || 0) < TREE_COST) throw new Error("Недостаточно стичкоинс");
       const nextPos = trees?.length || 0;
       const { error: e1 } = await supabase.from("orchard_trees").insert({ user_id: user!.id, position: nextPos });
       if (e1) throw e1;
-      const { error: e2 } = await supabase.from("profiles").update({ balance: profile.balance - TREE_COST }).eq("user_id", user!.id);
+      const { error: e2 } = await supabase.from("profiles").update({ stitchcoins: (profile.stitchcoins || 0) - TREE_COST }).eq("user_id", user!.id);
       if (e2) throw e2;
     },
     onSuccess: () => { invalidateAll(); toast.success("Новое дерево! 🌳"); },
     onError: (e) => toast.error(e.message),
   });
 
-  // Add pen
+  // Add pen (costs stitchcoins)
   const addPenMutation = useMutation({
     mutationFn: async () => {
-      if (!profile || profile.balance < PEN_COST) throw new Error("Недостаточно монет");
+      if (!profile || (profile.stitchcoins || 0) < PEN_COST) throw new Error("Недостаточно стичкоинс");
       const nextPos = pens?.length || 0;
       const { error: e1 } = await supabase.from("animal_pens").insert({ user_id: user!.id, position: nextPos });
       if (e1) throw e1;
-      const { error: e2 } = await supabase.from("profiles").update({ balance: profile.balance - PEN_COST }).eq("user_id", user!.id);
+      const { error: e2 } = await supabase.from("profiles").update({ stitchcoins: (profile.stitchcoins || 0) - PEN_COST }).eq("user_id", user!.id);
       if (e2) throw e2;
     },
     onSuccess: () => { invalidateAll(); toast.success("Новый загон! 🏗️"); },
@@ -140,7 +155,10 @@ const FarmPage = () => {
           <h1 className="font-display text-2xl font-bold">Моя ферма</h1>
           <p className="text-sm text-muted-foreground">Огород, сад и скотный двор</p>
         </div>
-        {profile && <CurrencyDisplay amount={profile.balance} size="lg" />}
+        <div className="flex flex-col items-end gap-1">
+          {profile && <CurrencyDisplay amount={profile.balance} size="md" />}
+          {profile && <CurrencyDisplay amount={profile.stitchcoins || 0} size="md" type="stitchcoins" />}
+        </div>
       </div>
 
       <GardenSection

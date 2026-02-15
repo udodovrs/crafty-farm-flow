@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import CurrencyDisplay from "@/components/CurrencyDisplay";
@@ -21,7 +21,7 @@ const GardenSection = ({ plots, profile, onInvalidate, onAddPlot, addPlotPending
 
   const plantMutation = useMutation({
     mutationFn: async ({ plotId, plantType, cost }: { plotId: string; plantType: string; cost: number }) => {
-      if (!profile || profile.balance < cost) throw new Error("Недостаточно монет");
+      if (!profile || profile.balance < cost) throw new Error("Недостаточно монеток");
       const { error: e1 } = await supabase
         .from("farm_plots")
         .update({ plant_type: plantType, planted_at: new Date().toISOString() })
@@ -31,15 +31,6 @@ const GardenSection = ({ plots, profile, onInvalidate, onAddPlot, addPlotPending
       if (e2) throw e2;
     },
     onSuccess: () => { onInvalidate(); toast.success("Семена посажены! 🌱"); },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const harvestMutation = useMutation({
-    mutationFn: async (plotId: string) => {
-      const { error } = await supabase.rpc("harvest_plot", { p_plot_id: plotId });
-      if (error) throw error;
-    },
-    onSuccess: () => { onInvalidate(); toast.success("Урожай собран! 🧺"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -64,11 +55,11 @@ const GardenSection = ({ plots, profile, onInvalidate, onAddPlot, addPlotPending
             size="sm"
             variant="outline"
             className="h-7 text-xs"
-            disabled={!profile || profile.balance < PLOT_COST || addPlotPending}
+            disabled={!profile || (profile.stitchcoins || 0) < PLOT_COST || addPlotPending}
             onClick={onAddPlot}
           >
             <Plus className="mr-1 h-3 w-3" />
-            Грядка <CurrencyDisplay amount={PLOT_COST} size="sm" />
+            Грядка <CurrencyDisplay amount={PLOT_COST} size="sm" type="stitchcoins" />
           </Button>
         </div>
       </CardHeader>
@@ -91,15 +82,7 @@ const GardenSection = ({ plots, profile, onInvalidate, onAddPlot, addPlotPending
                     <span className="text-2xl">{seed.emoji}</span>
                     <span className="text-[10px] text-muted-foreground">{seed.label}</span>
                     {timer?.ready ? (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="mt-1 h-6 text-[10px]"
-                        onClick={() => harvestMutation.mutate(plot.id)}
-                        disabled={harvestMutation.isPending}
-                      >
-                        Собрать
-                      </Button>
+                      <span className="mt-1 text-[10px] text-primary font-medium">✓ Готово</span>
                     ) : timer ? (
                       <span className="mt-1 flex items-center gap-0.5 text-[10px] text-muted-foreground">
                         <Timer className="h-3 w-3" /> {timer.minutes}м

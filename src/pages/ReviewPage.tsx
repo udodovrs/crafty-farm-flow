@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { CheckSquare, ThumbsUp, HelpCircle, Eye } from "lucide-react";
-import CurrencyDisplay from "@/components/CurrencyDisplay";
 
 const ReviewPage = () => {
   const { user } = useAuth();
@@ -14,7 +13,6 @@ const ReviewPage = () => {
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["review_tasks", user?.id],
     queryFn: async () => {
-      // Get tasks pending review that aren't mine
       const { data, error } = await supabase
         .from("stitch_tasks")
         .select("*")
@@ -23,7 +21,6 @@ const ReviewPage = () => {
         .order("created_at", { ascending: true });
       if (error) throw error;
 
-      // Filter out already reviewed
       const { data: myReviews } = await supabase
         .from("reviews")
         .select("task_id")
@@ -32,7 +29,6 @@ const ReviewPage = () => {
       const reviewedIds = new Set(myReviews?.map((r) => r.task_id) || []);
       const filteredTasks = data?.filter((t) => !reviewedIds.has(t.id)) || [];
 
-      // Fetch author profiles
       const userIds = [...new Set(filteredTasks.map(t => t.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
@@ -46,13 +42,7 @@ const ReviewPage = () => {
   });
 
   const reviewMutation = useMutation({
-    mutationFn: async ({
-      taskId,
-      decision,
-    }: {
-      taskId: string;
-      decision: boolean;
-    }) => {
+    mutationFn: async ({ taskId, decision }: { taskId: string; decision: boolean }) => {
       const { error } = await supabase.rpc("process_review", {
         p_task_id: taskId,
         p_decision: decision,
@@ -64,13 +54,11 @@ const ReviewPage = () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success(
         variables.decision
-          ? "Работа подтверждена! +2 монеты 🪙"
-          : "Сомнение отмечено. +2 монеты 🪙"
+          ? "Работа подтверждена! +2 монетки 🪙"
+          : "Сомнение отмечено. +2 монетки 🪙"
       );
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (error) => toast.error(error.message),
   });
 
   return (
@@ -81,7 +69,7 @@ const ReviewPage = () => {
           Проверка работ
         </h1>
         <p className="text-sm text-muted-foreground">
-          Проверяйте чужие вышивки и получайте <CurrencyDisplay amount={2} size="sm" /> за каждую
+          Проверяйте чужие вышивки и получайте 2 🪙 за каждую
         </p>
       </div>
 
@@ -107,12 +95,11 @@ const ReviewPage = () => {
                     Автор: {(task as any).author_name}
                   </CardTitle>
                   <span className="text-xs text-muted-foreground">
-                    {task.approvals_count}/2 подтверждений
+                    {task.stitch_count} крестиков
                   </span>
                 </div>
                 <CardDescription>
-                  Кодовое слово:{" "}
-                  <span className="font-bold text-accent">{task.code_word}</span>
+                  Кодовое слово: <span className="font-bold text-accent">{task.code_word}</span>
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -120,11 +107,7 @@ const ReviewPage = () => {
                   <div>
                     <p className="mb-1 text-xs font-medium text-muted-foreground text-center">ДО</p>
                     {task.photo_before_url ? (
-                      <img
-                        src={task.photo_before_url}
-                        alt="До вышивки"
-                        className="aspect-square w-full rounded-lg object-cover border border-border"
-                      />
+                      <img src={task.photo_before_url} alt="До" className="aspect-square w-full rounded-lg object-cover border border-border" />
                     ) : (
                       <div className="flex aspect-square items-center justify-center rounded-lg bg-muted">
                         <span className="text-xs text-muted-foreground">Нет фото</span>
@@ -134,11 +117,7 @@ const ReviewPage = () => {
                   <div>
                     <p className="mb-1 text-xs font-medium text-muted-foreground text-center">ПОСЛЕ</p>
                     {task.photo_after_url ? (
-                      <img
-                        src={task.photo_after_url}
-                        alt="После вышивки"
-                        className="aspect-square w-full rounded-lg object-cover border border-border"
-                      />
+                      <img src={task.photo_after_url} alt="После" className="aspect-square w-full rounded-lg object-cover border border-border" />
                     ) : (
                       <div className="flex aspect-square items-center justify-center rounded-lg bg-muted">
                         <span className="text-xs text-muted-foreground">Нет фото</span>
@@ -150,9 +129,7 @@ const ReviewPage = () => {
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
-                    onClick={() =>
-                      reviewMutation.mutate({ taskId: task.id, decision: true })
-                    }
+                    onClick={() => reviewMutation.mutate({ taskId: task.id, decision: true })}
                     disabled={reviewMutation.isPending}
                   >
                     <ThumbsUp className="mr-2 h-4 w-4" />
@@ -161,9 +138,7 @@ const ReviewPage = () => {
                   <Button
                     variant="outline"
                     className="flex-1"
-                    onClick={() =>
-                      reviewMutation.mutate({ taskId: task.id, decision: false })
-                    }
+                    onClick={() => reviewMutation.mutate({ taskId: task.id, decision: false })}
                     disabled={reviewMutation.isPending}
                   >
                     <HelpCircle className="mr-2 h-4 w-4" />
