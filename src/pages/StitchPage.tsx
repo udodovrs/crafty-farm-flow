@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +21,6 @@ const generateCodeWord = () => {
 const StitchPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [codeWord, setCodeWord] = useState<string | null>(null);
   const [photoBefore, setPhotoBefore] = useState<File | null>(null);
   const [photoAfter, setPhotoAfter] = useState<File | null>(null);
   const [previewBefore, setPreviewBefore] = useState<string | null>(null);
@@ -30,6 +29,23 @@ const StitchPage = () => {
   const beforeRef = useRef<HTMLInputElement>(null);
   const afterRef = useRef<HTMLInputElement>(null);
 
+  // Fetch active draft (code word that hasn't been submitted yet)
+  const { data: draftTask, isLoading: isDraftLoading } = useQuery({
+    queryKey: ["draft_stitch_task", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stitch_tasks")
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("status", "draft")
+        .order("created_at", { ascending: false })
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const { data: myTasks, isLoading } = useQuery({
     queryKey: ["my_stitch_tasks", user?.id],
     queryFn: async () => {
@@ -37,11 +53,35 @@ const StitchPage = () => {
         .from("stitch_tasks")
         .select("*")
         .eq("user_id", user!.id)
+        .neq("status", "draft")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
     enabled: !!user,
+  });
+
+  const codeWord = draftTask?.code_word ?? null;
+
+  // Create a draft task with code word
+  const getCodeWordMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Необходимо войти");
+      const word = generateCodeWord();
+      const { error } = await supabase.from("stitch_tasks").insert({
+        user_id: user.id,
+        code_word: word,
+        status: "draft",
+        stitch_count: 0,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["draft_stitch_task"] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
   });
 
   const handleFileChange = (
@@ -60,10 +100,10 @@ const StitchPage = () => {
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!photoBefore || !photoAfter) throw new Error("Загрузите оба фото");
-      if (!codeWord) throw new Error("Сначала получите кодовое слово");
+      if (!draftTask) throw new Error("Сначала получите кодовое слово");
       if (!user) throw new Error("Необходимо войти");
 
-      const taskId = crypto.randomUUID();
+      const taskId = draftTask.id;
 
       const beforeExt = photoBefore.name.split(".").pop();
       const beforePath = `${user.id}/${taskId}/before.${beforeExt}`;
@@ -86,25 +126,22 @@ const StitchPage = () => {
         .from("stitch-photos")
         .getPublicUrl(afterPath);
 
-      const { error } = await supabase.from("stitch_tasks").insert({
-        id: taskId,
-        user_id: user.id,
-        code_word: codeWord,
+      const { error } = await supabase.from("stitch_tasks").update({
         photo_before_url: beforeUrl,
         photo_after_url: afterUrl,
         status: "pending",
         stitch_count: parseInt(stitchCount) || 0,
-      });
+      }).eq("id", taskId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my_stitch_tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["draft_stitch_task"] });
       setPhotoBefore(null);
       setPhotoAfter(null);
       setPreviewBefore(null);
       setPreviewAfter(null);
       setStitchCount("");
-      setCodeWord(null); // Reset code word after submission
       toast.success("Работа отправлена на проверку! ✨");
     },
     onError: (error) => {
@@ -113,7 +150,6 @@ const StitchPage = () => {
   });
 
   const statusConfig = {
-    draft: { label: "Черновик", icon: Clock, className: "bg-muted text-muted-foreground" },
     pending: { label: "На проверке", icon: Clock, className: "bg-craft-gold/20 text-craft-gold" },
     approved: { label: "Принято ✓", icon: CheckCircle, className: "bg-primary/20 text-primary" },
     rejected: { label: "Отклонено", icon: XCircle, className: "bg-destructive/20 text-destructive" },
@@ -132,22 +168,26 @@ const StitchPage = () => {
       </div>
 
       {/* Step 1: Get code word */}
-      {!codeWord ? (
+      {isDraftLoading ? (
+        <p className="text-sm text-muted-foreground">Загрузка...</p>
+      ) : !codeWord ? (
         <Card className="mb-4">
           <CardContent className="py-8 text-center">
             <Key className="mx-auto mb-3 h-10 w-10 text-accent" />
             <p className="mb-4 text-sm text-muted-foreground">
               Получите кодовое слово, чтобы начать новую вышивку
             </p>
-            <Button onClick={() => setCodeWord(generateCodeWord())}>
+            <Button
+              onClick={() => getCodeWordMutation.mutate()}
+              disabled={getCodeWordMutation.isPending}
+            >
               <Key className="mr-2 h-4 w-4" />
-              Получить кодовое слово
+              {getCodeWordMutation.isPending ? "Генерация..." : "Получить кодовое слово"}
             </Button>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Code Word Display */}
           <Card className="mb-4">
             <CardHeader className="pb-2">
               <CardTitle className="font-display text-base">Кодовое слово</CardTitle>
@@ -162,7 +202,6 @@ const StitchPage = () => {
             </CardContent>
           </Card>
 
-          {/* Stitch Count */}
           <Card className="mb-4">
             <CardHeader className="pb-2">
               <CardTitle className="font-display text-base">Количество крестиков</CardTitle>
@@ -180,7 +219,6 @@ const StitchPage = () => {
             </CardContent>
           </Card>
 
-          {/* Photo Upload */}
           <div className="mb-4 grid grid-cols-2 gap-3">
             <Card
               className="cursor-pointer hover:shadow-md transition-shadow"
