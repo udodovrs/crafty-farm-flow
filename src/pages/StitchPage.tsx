@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,11 +11,66 @@ import { Camera, Upload, Scissors, CheckCircle, XCircle, Clock, Key } from "luci
 const CODE_WORDS = [
   "Подсолнух", "Радуга", "Котик", "Бабочка", "Звезда", "Сердце",
   "Домик", "Облако", "Цветок", "Рыбка", "Птичка", "Ёжик",
-  "Грибок", "Ягодка", "Листочек", "Снежинка",
+  "Ягодка", "Листочек", "Снежинка", "Лиса", "Зайчик", "Медведь",
+  "Пчёлка", "Божья коровка", "Стрекоза", "Паучок", "Улитка", "Кит",
+  "Дельфин", "Черепаха", "Попугай", "Фламинго", "Пингвин", "Сова",
+  "Ласточка", "Синица", "Воробей", "Лебедь", "Аист", "Журавль",
+  "Ромашка", "Тюльпан", "Роза", "Лилия", "Фиалка", "Василёк",
+  "Одуванчик", "Колокольчик", "Ландыш", "Подснежник", "Кактус", "Пальма",
+  "Ёлочка", "Берёза", "Дуб", "Яблоня", "Вишня", "Клубника",
+  "Малина", "Черника", "Арбуз", "Ананас", "Лимон", "Апельсин",
+  "Персик", "Груша", "Банан", "Виноград", "Кошка", "Собака",
+  "Хомячок", "Кролик", "Белочка", "Оленёнок", "Волчонок", "Тигрёнок",
+  "Львёнок", "Слонёнок", "Жирафик", "Зебра", "Панда", "Коала",
+  "Единорог", "Дракончик", "Русалка", "Фея", "Принцесса", "Рыцарь",
+  "Корона", "Замок", "Маяк", "Кораблик", "Ракета", "Самолёт",
+  "Воздушный шар", "Зонтик", "Варежка", "Шарфик", "Клубок", "Иголка",
+  "Напёрсток", "Пуговица", "Ленточка", "Бусинка",
 ];
 
 const generateCodeWord = () => {
-  return CODE_WORDS[Math.floor(Math.random() * CODE_WORDS.length)];
+  const word = CODE_WORDS[Math.floor(Math.random() * CODE_WORDS.length)];
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  return `${word}-${digits}`;
+};
+
+const compressImage = (file: File, maxWidth = 1200, quality = 0.75, maxSizeBytes = 1024 * 1024): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      let w = img.width;
+      let h = img.height;
+      if (w > maxWidth) {
+        h = Math.round((h * maxWidth) / w);
+        w = maxWidth;
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const tryCompress = (q: number) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error("Compression failed"));
+            if (blob.size > maxSizeBytes && q > 0.3) {
+              tryCompress(q - 0.1);
+            } else {
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+            }
+          },
+          "image/jpeg",
+          q
+        );
+      };
+      tryCompress(quality);
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = url;
+  });
 };
 
 const StitchPage = () => {
@@ -29,7 +84,6 @@ const StitchPage = () => {
   const beforeRef = useRef<HTMLInputElement>(null);
   const afterRef = useRef<HTMLInputElement>(null);
 
-  // Fetch active draft (code word that hasn't been submitted yet)
   const { data: draftTask, isLoading: isDraftLoading } = useQuery({
     queryKey: ["draft_stitch_task", user?.id],
     queryFn: async () => {
@@ -63,7 +117,6 @@ const StitchPage = () => {
 
   const codeWord = draftTask?.code_word ?? null;
 
-  // Create a draft task with code word
   const getCodeWordMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Необходимо войти");
@@ -84,16 +137,21 @@ const StitchPage = () => {
     },
   });
 
-  const handleFileChange = (
+  const handleFileChange = async (
     file: File | null,
     setFile: (f: File | null) => void,
     setPreview: (s: string | null) => void
   ) => {
     if (file) {
-      setFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file);
+        setFile(compressed);
+        const reader = new FileReader();
+        reader.onloadend = () => setPreview(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } catch {
+        toast.error("Не удалось обработать изображение");
+      }
     }
   };
 
@@ -105,15 +163,13 @@ const StitchPage = () => {
 
       const taskId = draftTask.id;
 
-      const beforeExt = photoBefore.name.split(".").pop();
-      const beforePath = `${user.id}/${taskId}/before.${beforeExt}`;
+      const beforePath = `${user.id}/${taskId}/before.jpg`;
       const { error: beforeError } = await supabase.storage
         .from("stitch-photos")
         .upload(beforePath, photoBefore);
       if (beforeError) throw beforeError;
 
-      const afterExt = photoAfter.name.split(".").pop();
-      const afterPath = `${user.id}/${taskId}/after.${afterExt}`;
+      const afterPath = `${user.id}/${taskId}/after.jpg`;
       const { error: afterError } = await supabase.storage
         .from("stitch-photos")
         .upload(afterPath, photoAfter);
@@ -167,7 +223,6 @@ const StitchPage = () => {
         </p>
       </div>
 
-      {/* Step 1: Get code word */}
       {isDraftLoading ? (
         <p className="text-sm text-muted-foreground">Загрузка...</p>
       ) : !codeWord ? (
@@ -277,7 +332,6 @@ const StitchPage = () => {
         </>
       )}
 
-      {/* My Tasks History */}
       <div>
         <h2 className="mb-3 font-display text-lg font-semibold">Мои работы</h2>
         {isLoading ? (

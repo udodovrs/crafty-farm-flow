@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,14 +20,16 @@ interface BarnSectionProps {
 
 const BarnSection = ({ pens, pantry, profile, onInvalidate, onAddPen, addPenPending }: BarnSectionProps) => {
   const { user } = useAuth();
+  const [feedingPenId, setFeedingPenId] = useState<string | null>(null);
 
   const feedMutation = useMutation({
     mutationFn: async ({ penId, quantity }: { penId: string; quantity: number }) => {
+      setFeedingPenId(penId);
       const { error } = await supabase.rpc("feed_animal", { p_pen_id: penId, p_quantity: quantity });
       if (error) throw error;
     },
-    onSuccess: () => { onInvalidate(); toast.success("Животные накормлены! 🧺"); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: () => { setFeedingPenId(null); onInvalidate(); toast.success("Животные накормлены! 🧺"); },
+    onError: (e) => { setFeedingPenId(null); toast.error(e.message); },
   });
 
   const getPantryQty = (itemType: string) => {
@@ -57,6 +60,7 @@ const BarnSection = ({ pens, pantry, profile, onInvalidate, onAddPen, addPenPend
         <div className="space-y-3">
           {pens.map((pen) => {
             const animal = ANIMALS.find((a) => a.type === pen.animal_type);
+            const isThisPenFeeding = feedMutation.isPending && feedingPenId === pen.id;
 
             return (
               <div
@@ -86,10 +90,10 @@ const BarnSection = ({ pens, pantry, profile, onInvalidate, onAddPen, addPenPend
                       size="sm"
                       variant="default"
                       className="mt-2 h-7 text-xs"
-                      disabled={getPantryQty(animal.feedType) < animal.feedPerProduct || feedMutation.isPending}
+                      disabled={getPantryQty(animal.feedType) < animal.feedPerProduct || isThisPenFeeding}
                       onClick={() => feedMutation.mutate({ penId: pen.id, quantity: 1 })}
                     >
-                      {animal.productEmoji} Покормить → 1 {animal.productLabel}
+                      {isThisPenFeeding ? "⏳ Кормим..." : `${animal.productEmoji} Покормить → 1 ${animal.productLabel}`}
                     </Button>
                   </div>
                 ) : (
