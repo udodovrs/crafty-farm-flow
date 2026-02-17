@@ -49,7 +49,15 @@ const ReviewPage = () => {
       });
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
+      // Cleanup photos from storage via edge function
+      try {
+        await supabase.functions.invoke("cleanup-stitch-photos", {
+          body: { taskId: variables.taskId },
+        });
+      } catch (e) {
+        console.warn("Photo cleanup failed:", e);
+      }
       queryClient.invalidateQueries({ queryKey: ["review_tasks"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast.success(
